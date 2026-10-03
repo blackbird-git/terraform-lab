@@ -23,9 +23,10 @@ resource "aws_vpc" "lab" {
 }
 
 resource "aws_subnet" "public_a" {
-  vpc_id            = aws_vpc.lab.id
-  cidr_block        = "10.0.1.0/24"
-  availability_zone = "us-west-2a"
+  vpc_id                  = aws_vpc.lab.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "us-west-2a"
+  map_public_ip_on_launch = true
 
   tags = {
     Name        = "terraform-public-a"
@@ -35,9 +36,10 @@ resource "aws_subnet" "public_a" {
 }
 
 resource "aws_subnet" "public_b" {
-  vpc_id            = aws_vpc.lab.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = "us-west-2b"
+  vpc_id                  = aws_vpc.lab.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "us-west-2b"
+  map_public_ip_on_launch = true
 
   tags = {
     Name        = "terraform-public-b"
@@ -78,4 +80,30 @@ resource "aws_internet_gateway" "lab" {
     Environment = "development"
     ManagedBy   = "terraform"
   }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.lab.id
+
+  tags = {
+    Name        = "terraform-public-rt"
+    Environment = "development"
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_route" "public_internet" {
+  route_table_id         = aws_route_table.public.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.lab.id
+}
+
+resource "aws_route_table_association" "public_a" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
 }
