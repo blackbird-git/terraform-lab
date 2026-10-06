@@ -130,6 +130,18 @@ resource "aws_security_group" "web" {
   }
 }
 
+resource "aws_security_group" "alb" {
+  name        = "terraform-alb-sg"
+  description = "Security group for Amazon Load Balancer"
+  vpc_id      = aws_vpc.lab.id
+
+  tags = {
+    Name        = "terraform-alb-sg"
+    Environment = "development"
+    ManagedBy   = "terraform"
+  }
+}
+
 # Added outbound access 
 
 resource "aws_vpc_security_group_egress_rule" "web_all_outbound" {
@@ -138,10 +150,26 @@ resource "aws_vpc_security_group_egress_rule" "web_all_outbound" {
   ip_protocol       = "-1"
 }
 
+resource "aws_vpc_security_group_egress_rule" "alb_all_outbound" {
+  security_group_id = aws_security_group.alb.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
+
 # Added Inbound access
 
-resource "aws_vpc_security_group_ingress_rule" "web_http" {
-  security_group_id = aws_security_group.web.id
+resource "aws_vpc_security_group_ingress_rule" "allow_from_sg" {
+  security_group_id            = aws_security_group.web.id
+  referenced_security_group_id = aws_security_group.alb.id
+  from_port                    = 80
+  to_port                      = 80
+  ip_protocol                  = "tcp"
+
+  description = "Allow HTTP from the ALB SG"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_http" {
+  security_group_id = aws_security_group.alb.id
 
   cidr_ipv4   = "0.0.0.0/0"
   from_port   = 80
@@ -176,6 +204,7 @@ resource "aws_instance" "web" {
   subnet_id              = aws_subnet.public_a.id
   vpc_security_group_ids = [aws_security_group.web.id]
 
+
   # The reason for the user_data_replace_on_change is because we are adding a bootstrap script for nginx install on an existing EC2. We need it to build a new instance to execute the script.
 
   user_data_replace_on_change = true
@@ -194,4 +223,108 @@ resource "aws_instance" "web" {
     ManagedBy   = "terraform"
   }
 }
+
+resource "aws_instance" "web_b" {
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type          = "t3.micro"
+  subnet_id              = aws_subnet.public_b.id
+  vpc_security_group_ids = [aws_security_group.web.id]
+
+
+
+  user_data_replace_on_change = true
+
+  user_data = <<-EOF
+    #!/bin/bash
+    dnf install -y nginx
+    systemctl enable nginx
+    systemctl start nginx
+  EOF
+
+
+  tags = {
+    Name        = "terraform-web-b"
+    Environment = "development"
+    ManagedBy   = "terraform"
+  }
+}
+
+# Added output values
+
+output "web_public_ip" {
+  value       = aws_instance.web.public_ip
+  description = "The public IP address of the main web server."
+}
+
+output "web_url" {
+  value       = "http://${aws_instance.web.public_ip}"
+  description = "The web url of the main web server."
+}
+
+output "web_b_url" {
+  value       = "http://${aws_instance.web_b.public_ip}"
+  description = "The web url of the main web server."
+}
+
+output "alb_url" {
+  value       = "http://${aws_lb.web.dns_name}"
+  description = "The web url of the load balancer."
+}
+
+# Created Load Balancer
+
+resource "aws_lb" "web" {
+  name               = "terraform-web-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+
+  enable_deletion_protection = false
+
+  tags = {
+    Environment = "development"
+    ManagedBy   = "terraform"
+    Name        = "terraform-web-alb"
+  }
+}
+
+resource "aws_lb_target_group" "web" {
+  name        = "terraform-web-tg"
+  port        = 80
+  protocol    = "HTTP"
+  target_type = "instance"
+  vpc_id      = aws_vpc.lab.id
+
+  tags = {
+    Environment = "development"
+    ManagedBy   = "terraform"
+    Name        = "terraform-web-tg"
+  }
+}
+
+resource "aws_lb_target_group_attachment" "web" {
+  target_group_arn = aws_lb_target_group.web.arn
+  target_id        = aws_instance.web.id
+  port             = 80
+}
+
+resource "aws_lb_target_group_attachment" "web_b" {
+  target_group_arn = aws_lb_target_group.web.arn
+  target_id        = aws_instance.web_b.id
+  port             = 80
+}
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.web.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
+  }
+}
+
+
 
