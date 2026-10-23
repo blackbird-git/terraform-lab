@@ -11,7 +11,7 @@ provider "aws" {
   region = "us-west-2"
 }
 
-# Added AWS VPC 
+# Added AWS VPC
 
 resource "aws_vpc" "lab" {
   cidr_block = "10.0.0.0/16"
@@ -76,7 +76,7 @@ resource "aws_subnet" "private_b" {
   }
 }
 
-# Added an AWS gateway 
+# Added an AWS gateway
 
 resource "aws_internet_gateway" "lab" {
   vpc_id = aws_vpc.lab.id
@@ -142,7 +142,7 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# Added outbound access 
+# Added outbound access
 
 resource "aws_vpc_security_group_egress_rule" "web_all_outbound" {
   security_group_id = aws_security_group.web.id
@@ -179,7 +179,7 @@ resource "aws_vpc_security_group_ingress_rule" "alb_http" {
   description = "Allow HTTP from the Internet"
 }
 
-# Added data lookup for most recent Amazon Linux 2023 x86_44 AMI 
+# Added data lookup for most recent Amazon Linux 2023 x86_44 AMI
 
 data "aws_ami" "amazon_linux" {
   most_recent = true
@@ -196,7 +196,7 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-# Create AWS EC2 Instance using latest AMI referenced above. Bootstrap nginx install. 
+# Create AWS EC2 Instance using latest AMI referenced above. Bootstrap nginx install.
 
 resource "aws_instance" "web" {
   ami                    = data.aws_ami.amazon_linux.id
