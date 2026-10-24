@@ -16,12 +16,13 @@ provider "aws" {
 resource "aws_vpc" "lab" {
   cidr_block = "10.0.0.0/16"
 
-  tags = {
-    Name        = "terraform-lab"
-    Project     = "cloud-platform-lab"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name    = "terraform-lab"
+      Project = "cloud-platform-lab"
+
+  })
 }
 
 # Added public and private subnets
@@ -32,11 +33,12 @@ resource "aws_subnet" "public_a" {
   availability_zone       = "us-west-2a"
   map_public_ip_on_launch = true
 
-  tags = {
-    Name        = "terraform-public-a"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-public-a"
+    }
+  )
 }
 
 resource "aws_subnet" "public_b" {
@@ -45,11 +47,12 @@ resource "aws_subnet" "public_b" {
   availability_zone       = "us-west-2b"
   map_public_ip_on_launch = true
 
-  tags = {
-    Name        = "terraform-public-b"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-public-b"
+    }
+  )
 }
 
 resource "aws_subnet" "private_a" {
@@ -57,11 +60,12 @@ resource "aws_subnet" "private_a" {
   cidr_block        = "10.0.11.0/24"
   availability_zone = "us-west-2a"
 
-  tags = {
-    Name        = "terraform-private-a"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-private-a"
+    }
+  )
 }
 
 resource "aws_subnet" "private_b" {
@@ -69,11 +73,12 @@ resource "aws_subnet" "private_b" {
   cidr_block        = "10.0.12.0/24"
   availability_zone = "us-west-2b"
 
-  tags = {
-    Name        = "terraform-private-b"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-private-b"
+    }
+  )
 }
 
 # Added an AWS gateway
@@ -81,11 +86,12 @@ resource "aws_subnet" "private_b" {
 resource "aws_internet_gateway" "lab" {
   vpc_id = aws_vpc.lab.id
 
-  tags = {
-    Name        = "terraform-lab-igw"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-lab-igw"
+    }
+  )
 }
 
 # Added Routes and routing tables for subnets
@@ -93,11 +99,12 @@ resource "aws_internet_gateway" "lab" {
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.lab.id
 
-  tags = {
-    Name        = "terraform-public-rt"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-public-rt"
+    }
+  )
 }
 
 resource "aws_route" "public_internet" {
@@ -123,11 +130,12 @@ resource "aws_security_group" "web" {
   description = "Security group for Terraform web server lab"
   vpc_id      = aws_vpc.lab.id
 
-  tags = {
-    Name        = "terraform-web-sg"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-web-sg"
+    }
+  )
 }
 
 resource "aws_security_group" "alb" {
@@ -135,11 +143,12 @@ resource "aws_security_group" "alb" {
   description = "Security group for Amazon Load Balancer"
   vpc_id      = aws_vpc.lab.id
 
-  tags = {
-    Name        = "terraform-alb-sg"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-alb-sg"
+    }
+  )
 }
 
 # Added outbound access
@@ -217,11 +226,12 @@ resource "aws_instance" "web" {
   EOF
 
 
-  tags = {
-    Name        = "terraform-web"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-web"
+    }
+  )
 }
 
 resource "aws_instance" "web_b" {
@@ -242,11 +252,12 @@ resource "aws_instance" "web_b" {
   EOF
 
 
-  tags = {
-    Name        = "terraform-web-b"
-    Environment = "development"
-    ManagedBy   = "terraform"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-web-b"
+    }
+  )
 }
 
 # Added output values
@@ -282,11 +293,12 @@ resource "aws_lb" "web" {
 
   enable_deletion_protection = false
 
-  tags = {
-    Environment = "development"
-    ManagedBy   = "terraform"
-    Name        = "terraform-web-alb"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-web-alb"
+    }
+  )
 }
 
 resource "aws_lb_target_group" "web" {
@@ -296,11 +308,11 @@ resource "aws_lb_target_group" "web" {
   target_type = "instance"
   vpc_id      = aws_vpc.lab.id
 
-  tags = {
-    Environment = "development"
-    ManagedBy   = "terraform"
-    Name        = "terraform-web-tg"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "terraform-web-tg"
+  })
 }
 
 resource "aws_lb_target_group_attachment" "web" {
